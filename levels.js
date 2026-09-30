@@ -154,7 +154,7 @@
       objective: 'Ninguém briga de barriga cheia.',
       win: 'Olha só. Nem uma mordida. Em ninguém.',
       ending: { who: 'gonca', text: 'Até que enfim, humano... Já era hora.', keep: true, poses: {} },
-      hint: ['Fogo anda pelo pavio. Ferro cai. O resto é peso, torrada e rampa.', 'Isqueiro acende vela. Vela acende pavio. Nada de atalho.'],
+      hint: ['Fogo anda pelo pavio. Leiteira cai. O resto é peso, torrada e rampa.', 'Isqueiro acende vela. Vela acende pavio. Nada de atalho.'],
       trigger: 'light',
       // tabuleiro do tamanho da foto (1:1, sem borrar); bichos no piso, potes no piso; a bancada é só cenário: o que cai da beira dela vai pro chão
       /* tabuleiro 2400 como as outras fases: a cozinha (1264) fica no meio, deslocada por KX; dos lados, espelho escurecido, fora da área de jogo */

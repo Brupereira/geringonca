@@ -184,8 +184,8 @@
         }
         case 'ironhook': { // ferro de passar pendurado por uma corda curta num gancho fixo; fogo na corda solta o ferro
           add(Bodies.circle(x, y, 5, Object.assign({}, S, { isSensor: true })));
-          const iron = add(Bodies.rectangle(x, y + (ent.drop || 20) + 33, 40, 66, { density: 0.006, friction: 0.6, restitution: 0.02, chamfer: { radius: 8 }, collisionFilter: { group: -3 } }), 'iron'); iron.itemType = 'iron';
-          const link = Constraint.create({ pointA: { x, y }, bodyB: iron, pointB: { x: 0, y: -33 }, length: ent.drop || 20, stiffness: 0.95 });
+          const iron = add(Bodies.rectangle(x, y + (ent.drop || 20) + 30, 58, 60, { density: 0.0046, friction: 0.6, restitution: 0.02, chamfer: { radius: 8 }, collisionFilter: { group: -3 } }), 'iron'); iron.itemType = 'iron'; /* leiteira pendurada (peso) */
+          const link = Constraint.create({ pointA: { x, y }, bodyB: iron, pointB: { x: 0, y: -30 }, length: ent.drop || 20, stiffness: 0.95 });
           Composite.add(world, link); Object.assign(ent.data, { link, iron, cut: false }); break;
         }
         case 'bagrope': { // saco de ração dependurado por uma corda num gancho fixo (hx, hy); a corda é um elo que a chama corta
@@ -359,7 +359,7 @@
           const S0 = d.from === 'B' ? d.B : d.A, S1 = d.from === 'B' ? d.A : d.B, u = d.pos / d.L, fx = S0.x + (S1.x - S0.x) * u, fy = S0.y + (S1.y - S0.y) * u; d.front = { x: fx, y: fy };
           if (state.t % 2 === 0) ev({ type: 'fusefire', x: fx, y: fy });
           fireNear(fx, fy, 50);
-          if (d.pos >= d.L) { d.done = true; for (const h of ents) if (h.type === 'ironhook' && !h.data.cut && (() => { const ir = h.data.iron, top = { x: ir.position.x, y: ir.position.y - 33 }; if (S1.y > top.y - 6) return false; const vx = top.x - h.x, vy = top.y - h.y, L2 = vx * vx + vy * vy || 1; const u = Math.max(0, Math.min(1, ((S1.x - h.x) * vx + (S1.y - h.y) * vy) / L2)); return Math.hypot(S1.x - (h.x + vx * u), S1.y - (h.y + vy * u)) < 40; })()) { h.data.cut = true; Composite.remove(world, h.data.link); ev({ type: 'ropecut', x: h.x, y: h.y + 10 }); } for (const f of ents) if (f.type === 'fuse' && f !== e && !f.data.lit) { if (Math.hypot(f.data.A.x - S1.x, f.data.A.y - S1.y) < 40) { f.data.lit = true; f.data.from = 'A'; } else if (Math.hypot(f.data.B.x - S1.x, f.data.B.y - S1.y) < 40) { f.data.lit = true; f.data.from = 'B'; } } }
+          if (d.pos >= d.L) { d.done = true; for (const h of ents) if (h.type === 'ironhook' && !h.data.cut && (() => { const ir = h.data.iron, top = { x: ir.position.x, y: ir.position.y - 30 }; if (S1.y > top.y - 6) return false; const vx = top.x - h.x, vy = top.y - h.y, L2 = vx * vx + vy * vy || 1; const u = Math.max(0, Math.min(1, ((S1.x - h.x) * vx + (S1.y - h.y) * vy) / L2)); return Math.hypot(S1.x - (h.x + vx * u), S1.y - (h.y + vy * u)) < 40; })()) { h.data.cut = true; Composite.remove(world, h.data.link); ev({ type: 'ropecut', x: h.x, y: h.y + 10 }); } for (const f of ents) if (f.type === 'fuse' && f !== e && !f.data.lit) { if (Math.hypot(f.data.A.x - S1.x, f.data.A.y - S1.y) < 40) { f.data.lit = true; f.data.from = 'A'; } else if (Math.hypot(f.data.B.x - S1.x, f.data.B.y - S1.y) < 40) { f.data.lit = true; f.data.from = 'B'; } } }
         }
         else if (e.type === 'candle' && e.data.lit) {
           const f = e.data.flame; fireNear(f.x, f.y, 70);

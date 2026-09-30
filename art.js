@@ -62,10 +62,10 @@
     ironhook(c, e, play) {
       const d = (play && e.data) || {}; const ir = d.iron; const ox = play && e.main ? e.main.position.x : e.x, oy = play && e.main ? e.main.position.y : e.y;
       c.save(); c.shadowColor = 'transparent'; c.fillStyle = '#3b3b3b'; c.beginPath(); c.arc(0, 0, 5, 0, TAU); c.fill();
-      if (!d.cut) { const iy = ir ? ir.position.y - 33 - oy : (e.drop || 20); c.strokeStyle = '#5a3d22'; c.lineWidth = 4; c.beginPath(); c.moveTo(0, 0); c.lineTo(ir ? ir.position.x - ox : 0, iy); c.stroke(); }
+      if (!d.cut) { const iy = ir ? ir.position.y - 30 - oy : (e.drop || 20); c.strokeStyle = '#5a3d22'; c.lineWidth = 4; c.beginPath(); c.moveTo(0, 0); c.lineTo(ir ? ir.position.x - ox : 0, iy); c.stroke(); }
       c.restore();
-      if (ir) { c.save(); c.translate(ir.position.x - ox, ir.position.y - oy); c.rotate(ir.angle); if (!spriteOnBody(c, 'obj.iron', 40, 66, { scale: 1.06 })) { c.fillStyle = '#9aa3ad'; c.fillRect(-20, -33, 40, 66); } c.restore(); }
-      else { c.save(); c.translate(0, (e.drop || 20) + 33); if (!spriteOnBody(c, 'obj.iron', 40, 66, { scale: 1.06 })) { c.fillStyle = '#9aa3ad'; c.fillRect(-20, -33, 40, 66); } c.restore(); }
+      if (ir) { c.save(); c.translate(ir.position.x - ox, ir.position.y - oy); c.rotate(ir.angle); if (!spriteOnBody(c, 'obj.leiteira', 74, 62, { scale: 1, dx: 6 })) { c.fillStyle = '#9aa3ad'; c.fillRect(-20, -33, 40, 66); } c.restore(); }
+      else { c.save(); c.translate(0, (e.drop || 20) + 30); if (!spriteOnBody(c, 'obj.leiteira', 74, 62, { scale: 1, dx: 6 })) { c.fillStyle = '#9aa3ad'; c.fillRect(-29, -30, 58, 60); } c.restore(); }
     },
     kibble(c) { c.save(); c.beginPath(); c.arc(0, 0, 6, 0, TAU); c.clip(); if (!spriteOnBody(c, 'obj.kibble', 12, 12, { scale: 1.4 })) { c.fillStyle = '#6b4423'; c.fillRect(-6, -6, 12, 12); } c.restore(); },
     bowl(c, e, play) {

@@ -1,5 +1,5 @@
 /* GerinGonça — service worker: guarda o jogo para funcionar sem internet. */
-const CACHE = 'geringonca-v26';
+const CACHE = 'geringonca-v27';
 const CORE = ['./', './index.html', './engine.js', './levels.js', './sprites.js', './atlas.js', './art.js', './game.js', './assets/gonca.webp', './assets/gerin.webp', './assets/objetos3.webp', './assets/objetos1.jpg', './manifest.webmanifest', './icon.png',
   'https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(CACHE).then(c => Promise.allSettled(CORE.map(u => c.add(u)))).then(() => self.skipWaiting())); });
