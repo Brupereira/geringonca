@@ -157,7 +157,7 @@
       hint: ['Fogo anda pelo pavio. Ferro cai. O resto é peso, torrada e rampa.', 'Isqueiro acende vela. Vela acende pavio. Nada de atalho.'],
       trigger: 'light',
       // tabuleiro do tamanho da foto (1:1, sem borrar); bichos no piso, potes no piso; a bancada é só cenário: o que cai da beira dela vai pro chão
-      width: 1264,
+      width: 1264, fitWidth: 1700, /* ocupa ~75% da largura do painel */
       sink: { x1: 215, y: 300, y1: 800 }, stove: { x0: 1185, y: 300, y1: 430 },
       fireMsg: 'Pegou fogo. O almoço, a ração e a sua reputação.',
       scene: [
