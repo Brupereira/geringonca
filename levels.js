@@ -171,7 +171,7 @@
       ],
       fixed: [{ type: 'ironhook', x: 988, y: 30, drop: 70 }, { type: 'bagrope', x: 1333, y: 276, hx: 1333, hy: 276, loose: true }, { type: 'sardine', x: 771, y: 93 }, { type: 'bowl', x: 1118, y: 740, owner: 'gerin' }, { type: 'bowl', x: 748, y: 740, owner: 'gonca' }],
       actors: [
-        { who: 'gerin', x: 1900, y: 740, state: 'hungry', facing: -1 },
+        { who: 'gerin', x: 1600, y: 740, state: 'hungry', facing: -1 },
         { who: 'gonca', x: 300, y: 740, state: 'hungry', facing: 1 },
       ],
       inventory: { candle: 1, lighter: 1, fuse: 1, toaster: 1, toast: 1, funnel: 1, bat: 1 },

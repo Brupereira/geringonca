@@ -143,7 +143,7 @@
     const o = document.createElement('canvas'); o.width = Math.ceil(c.width * 1.25); o.height = Math.ceil(c.height * 1.25);
     const x = o.getContext('2d'); x.translate(o.width / 2, o.height / 2); x.rotate(deg * Math.PI / 180); x.drawImage(c, -c.width / 2, -c.height / 2); return o;
   }
-  const SINGLE_OPTS = { 'obj.bow': { holes: true }, 'obj.bowloaded': { holes: true }, 'obj.hydrant': { holes: true } }; // hidrante: vãos do volante // arco + corda fecham um branco por dentro
+  const SINGLE_OPTS = { 'obj.leiteira': { holes: true }, 'obj.bow': { holes: true }, 'obj.bowloaded': { holes: true }, 'obj.hydrant': { holes: true } }; // hidrante: vãos do volante // arco + corda fecham um branco por dentro
   const get = name => cache[name];
   const sheetCanvas = {};
   // Desenha um sprite com altura (ou largura) alvo, ancorado nos pés (centro inferior) por padrão.
