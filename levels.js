@@ -157,23 +157,22 @@
       hint: ['Fogo anda pelo pavio. Leiteira cai. O resto é peso, torrada e rampa.', 'Isqueiro acende vela. Vela acende pavio. Nada de atalho.'],
       trigger: 'light',
       // tabuleiro do tamanho da foto (1:1, sem borrar); bichos no piso, potes no piso; a bancada é só cenário: o que cai da beira dela vai pro chão
-      /* tabuleiro 2400 como as outras fases: a cozinha (1264) fica no meio, deslocada por KX; dos lados, espelho escurecido, fora da área de jogo */
-      sink: { x1: 215, y: 300, y1: 800 }, stove: { x0: 1185, y: 300, y1: 430 },
+      /* foto panorâmica 2000x1000 esticada pra 2400 (corta 380 do topo): bancada em y~310, chão em 664..820 */
+      sink: { x1: 400, y: 300, y1: 800 }, stove: { x0: 1470, y: 300, y1: 430 },
       fireMsg: 'Pegou fogo. O almoço, a ração e a sua reputação.',
       scene: [
-        { kind: 'photo', sprite: 'bg.kitchen', x: 0, y: -464, w: 1264, mirrorLeft: 568, mirrorRight: 568, dimSides: 0.42 },
-        { kind: 'wall', x: -12, y: 400, w: 24, h: 800, hidden: true }, { kind: 'wall', x: 1276, y: 400, w: 24, h: 800, hidden: true },
+        { kind: 'photo', sprite: 'bg.kitchen', x: 0, y: -380, w: 2400 },
         // prateleirinha da vela no canto esquerdo da parede; prateleirinha alta da sardinha; saco de ração em pé na bancada
-        { kind: 'prop', sprite: 'sc.shelf', x: 140, y: 189, w: 70, shadow: false },
-        { kind: 'slab', x: 140, y: 172, w: 70, h: 14, hidden: true },
-        { kind: 'prop', sprite: 'sc.shelf', x: 444, y: 134, w: 60, shadow: false },
-        { kind: 'slab', x: 444, y: 118, w: 58, h: 14, hidden: true },
-        { kind: 'slab', x: 930, y: 333, w: 120, h: 14, hidden: true },
+        { kind: 'prop', sprite: 'sc.shelf', x: 560, y: 203, w: 70, shadow: false },
+        { kind: 'slab', x: 560, y: 186, w: 70, h: 14, hidden: true },
+        { kind: 'prop', sprite: 'sc.shelf', x: 792, y: 134, w: 60, shadow: false },
+        { kind: 'slab', x: 792, y: 118, w: 58, h: 14, hidden: true },
+        { kind: 'slab', x: 1278, y: 333, w: 120, h: 14, hidden: true },
       ],
-      fixed: [{ type: 'ironhook', x: 640, y: 30, drop: 70 }, { type: 'bagrope', x: 985, y: 276, hx: 985, hy: 276, loose: true }, { type: 'sardine', x: 423, y: 93 }, { type: 'bowl', x: 770, y: 740, owner: 'gerin' }, { type: 'bowl', x: 400, y: 740, owner: 'gonca' }],
+      fixed: [{ type: 'ironhook', x: 988, y: 30, drop: 70 }, { type: 'bagrope', x: 1333, y: 276, hx: 1333, hy: 276, loose: true }, { type: 'sardine', x: 771, y: 93 }, { type: 'bowl', x: 1118, y: 740, owner: 'gerin' }, { type: 'bowl', x: 748, y: 740, owner: 'gonca' }],
       actors: [
-        { who: 'gerin', x: 1185, y: 740, state: 'hungry', facing: -1 },
-        { who: 'gonca', x: 240, y: 740, state: 'hungry', facing: 1 },
+        { who: 'gerin', x: 1900, y: 740, state: 'hungry', facing: -1 },
+        { who: 'gonca', x: 300, y: 740, state: 'hungry', facing: 1 },
       ],
       inventory: { candle: 1, lighter: 1, fuse: 1, toaster: 1, toast: 1, funnel: 1, bat: 1 },
       gerinChases: false,
@@ -201,19 +200,10 @@
         if (a.who === 'gerin' && st.fedG) { c.gerin.facing = -1; Matter.Body.setPosition(a.body, { x: bowls.gerin.x + 80, y: a.body.position.y }); c.setState(c.gerin, 'eat'); }
         if (a.who === 'gonca' && st.fedC) { c.gonca.facing = 1; Matter.Body.setPosition(a.body, { x: bowls.gonca.x - 112, y: a.body.position.y }); c.setState(c.gonca, 'eat'); }
       },
-      solution: [{ type: 'candle', x: 140, y: 115 }, { type: 'lighter', x: 176, y: 112, litAt: 0 }, { type: 'fuse', x: 393, y: 59, angle: 0, scale: 3.05 }, { type: 'toaster', x: 612, y: 284, flip: true }, { type: 'toast', x: 612, y: 226, inToaster: true }, { type: 'bat', x: 1010, y: 470, angle: -30, scale: 2 }, { type: 'funnel', x: 790, y: 600, angle: 0 }],
+      solution: [{ type: 'candle', x: 560, y: 129 }, { type: 'lighter', x: 596, y: 126, litAt: 0 }, { type: 'fuse', x: 782, y: 65, angle: -1.4, scale: 2.63 }, { type: 'toaster', x: 960, y: 284, flip: true }, { type: 'toast', x: 960, y: 226, inToaster: true }, { type: 'bat', x: 1358, y: 470, angle: -30, scale: 2 }, { type: 'funnel', x: 1138, y: 600, angle: 0 }],
     },
   ];
 
-  /* fase 3: a cozinha foi desenhada em coordenadas 0..1264; desloca tudo pra ficar no meio do tabuleiro de 2400 */
-  (function () {
-    const L = LEVELS[2], KX = 568, keys = ['x', 'hx', 'ex', 'cx'];
-    const sh = o => { if (!o) return; for (const k of keys) if (typeof o[k] === 'number') o[k] += KX; };
-    for (const s of L.scene) { sh(s); if (typeof s.x0 === 'number') s.x0 += KX; if (typeof s.x1 === 'number') s.x1 += KX; }
-    L.fixed.forEach(sh); L.actors.forEach(sh); L.solution.forEach(sh);
-    if (L.sink) L.sink.x1 += KX; if (L.stove) L.stove.x0 += KX;
-    L.play = { x0: KX, x1: KX + 1264 };
-  })();
 
   return { LEVELS, MESSAGES };
 });
