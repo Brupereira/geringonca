@@ -1,0 +1,60 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Verificador GerinGonça</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.20.0/matter.min.js"></script>
+<script src="engine.js"></script>
+<script src="levels.js"></script>
+</head><body>
+<pre id="out">pronto</pre>
+<script>
+const LEVELS = GG_LEVELS.LEVELS;
+const V = {
+  run(idx, placed, frames = 1800, every = 15) {
+    const level = LEVELS[idx];
+    const sim = GG.build(level, placed === undefined ? level.solution : placed);
+    const trace = [];
+    while (sim.state.t < frames && !sim.state.won && !sim.state.failed) {
+      if (sim.state.t % every === 0) {
+        const row = { t: sim.state.t };
+        sim.ents.forEach((e, i) => { for (const b of e.bodies) if (!b.isStatic) row[e.type + i] = [Math.round(b.position.x), Math.round(b.position.y), +b.speed.toFixed(1)]; });
+        for (const a of Object.values(sim.actors)) row[a.who] = [Math.round(a.body.position.x), Math.round(a.body.position.y), a.state];
+        trace.push(row);
+      }
+      sim.step();
+    }
+    return { won: sim.state.won, failed: sim.state.failed, t: sim.state.t, events: sim.state.events.map(e => e.type + (e.state ? ':' + e.who + ':' + e.state : '') + '@' + e.t), trace };
+  },
+  robust(idx, placed) {
+    const level = LEVELS[idx]; placed = placed || level.solution; let ok = 0, tot = 0;
+    for (const dx of [-8, 0, 8]) for (const dy of [-8, 0, 8]) { tot++; const p = placed.map(q => ['hydrant', 'tap', 'hose'].includes(q.type) ? q : Object.assign({}, q, { x: q.x + dx, y: q.y + dy })); if (GG.build(level, p).run(1800)) ok++; }
+    return ok + '/' + tot;
+  },
+  scan(idx, base, spec, frames = 1500) {
+    const lv = LEVELS[idx]; const wins = []; let n = 0;
+    for (let x = spec.xs[0]; x <= spec.xs[1]; x += spec.xs[2]) for (let y = spec.ys[0]; y <= spec.ys[1]; y += spec.ys[2]) for (const a of spec.angles) {
+      n++; const p = base.concat([{ type: spec.type, x, y, angle: a, flip: !!spec.flip }]);
+      const s = GG.build(lv, p); if (s.run(frames)) wins.push([x, y, a, s.state.wonAt]);
+    }
+    return { n, wins };
+  },
+  // peças jogadas em lugares aleatórios: quantas vezes a fase "se resolve sozinha"?
+  random(idx, n = 40) {
+    const lv = LEVELS[idx]; let wins = 0; let seed = 12345; const rnd = () => (seed = (seed * 1103515245 + 12345) % 2147483648) / 2147483648;
+    for (let i = 0; i < n; i++) {
+      const placed = []; for (const [type, cnt] of Object.entries(lv.inventory)) for (let k = 0; k < cnt; k++) placed.push({ type, x: 60 + rnd() * 1080, y: 60 + rnd() * 580, angle: Math.round((rnd() * 120 - 60) / 5) * 5, flip: rnd() < 0.5 });
+      if (GG.build(lv, placed).run(1500)) wins++;
+    }
+    return wins + '/' + n;
+  },
+  all() {
+    return LEVELS.map((lv, i) => {
+      const sol = GG.build(lv, lv.solution); sol.run(1800);
+      const empty = GG.build(lv, []); empty.run(1800);
+      const inv = {}; for (const p of lv.solution) inv[p.type] = (inv[p.type] || 0) + 1;
+      const invOk = Object.keys(inv).every(k => (lv.inventory[k] || 0) >= inv[k]);
+      return `${i + 1}. ${lv.title}: solução ${sol.state.won ? 'OK@' + sol.state.wonAt : 'FALHA@' + sol.state.t} | vazio ${empty.state.won ? 'GANHA SOZINHO!' : 'falha@' + empty.state.failedAt} | inv ${invOk ? 'ok' : 'INSUFICIENTE'} | robustez ${V.robust(i)} | aleatório ${V.random(i)}`;
+    }).join('\n');
+  },
+};
+document.getElementById('out').textContent = 'carregado: ' + LEVELS.length + ' fases';
+</script>
+</body></html>

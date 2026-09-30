@@ -1,0 +1,16 @@
+{
+  "name": "GerinGonça",
+  "short_name": "GerinGonça",
+  "description": "Monte geringonças para uma gata debochada e um cachorro bobo se atrapalharem, se zoarem e, um dia, virarem amigos.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#efe3cf",
+  "theme_color": "#e0563b",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
