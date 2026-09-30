@@ -271,14 +271,14 @@
   function startDragFromInv(type, ev) { try { canvas.focus({ preventScroll: true }); } catch (_) {} const ent = newEnt(type, -999, -999); S.drag = { ent, fromInv: true, over: false, moved: false, sx: ev.clientX, sy: ev.clientY }; S.armed = null; refreshCounts(); window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp, { once: true }); }
   function onMove(ev) {
     if (!S.drag) return; const p = boardPos(ev), d = S.drag; if (Math.hypot(ev.clientX - d.sx, ev.clientY - d.sy) > 4) d.moved = true; d.over = p.inside;
-    const nx = clamp(p.x - (d.ox || 0), 0, W), ny = clamp(p.y - (d.oy || 0), 0, d.ent.type === 'hydrant' ? FLOOR - 55 : FLOOR);
+    const px0 = (S.level.play && S.level.play.x0) || 0, px1 = (S.level.play && S.level.play.x1) || W; const nx = clamp(p.x - (d.ox || 0), px0, px1), ny = clamp(p.y - (d.oy || 0), 0, d.ent.type === 'hydrant' ? FLOOR - 55 : FLOOR);
     const dx = nx - d.ent.x, dy = ny - d.ent.y; moveEnt(d.ent, dx, dy); for (const k of d.kids || []) moveEnt(k, dx, dy);
   }
   function onUp(ev) {
     window.removeEventListener('pointermove', onMove); const d = S.drag; S.drag = null; if (!d) return; const p = boardPos(ev);
     if (d.fromInv) {
       if (!d.moved) { S.armed = S.armed === d.ent.type ? null : d.ent.type; refreshCounts(); toast(''); return; }
-      if (p.inside) { const nx = clamp(p.x, 10, W - 10), ny = clamp(p.y, 10, d.ent.type === 'hydrant' ? FLOOR - 55 : FLOOR - 5); moveEnt(d.ent, nx - d.ent.x, ny - d.ent.y); S.placed.push(d.ent); S.inv[d.ent.type]--; S.sel = d.ent; snap(d.ent, []); SFX.place(); refreshCounts(); }
+      if (p.inside) { const px0 = (S.level.play && S.level.play.x0) || 0, px1 = (S.level.play && S.level.play.x1) || W; const nx = clamp(p.x, px0 + 10, px1 - 10), ny = clamp(p.y, 10, d.ent.type === 'hydrant' ? FLOOR - 55 : FLOOR - 5); moveEnt(d.ent, nx - d.ent.x, ny - d.ent.y); S.placed.push(d.ent); S.inv[d.ent.type]--; S.sel = d.ent; snap(d.ent, []); SFX.place(); refreshCounts(); }
     }
     else if (!p.inside) removePlaced(d.ent);
     else snap(d.ent, d.kids);

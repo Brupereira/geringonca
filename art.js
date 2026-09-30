@@ -166,7 +166,10 @@
     strip(c, s) { const at = A(); const im = at && at.get(s.sprite); if (!im) return; const h = s.h, w = im.width * h / im.height; c.save(); c.beginPath(); if (s.cut) { c.moveTo(s.x0, 0); c.lineTo(s.cut.top, 0); c.lineTo(s.cut.top, s.y - h); c.lineTo(s.cut.bottom, s.y + 40); c.lineTo(s.x0, s.y + 40); c.closePath(); } else c.rect(s.x0, 0, s.x1 - s.x0, s.y + 40); c.clip(); for (let x = s.x0 - (s.offset || 0); x < s.x1; x += w - 2) c.drawImage(im, x, s.y - h, w, h); c.restore(); },
     // foto inteira com posição e largura explícitas (canto superior esquerdo em x,y)
     photo(c, s) { const at = A(); const img = at && at.get(s.sprite); if (!img) return; const h = img.height * s.w / img.width; c.drawImage(img, s.x, s.y, s.w, h);
-      if (s.mirrorLeft) { const m = s.mirrorLeft, sw = m * img.width / s.w; c.save(); c.translate(s.x, 0); c.scale(-1, 1); c.drawImage(img, 0, 0, sw, img.height, 0, s.y, m, h); c.restore(); } if (s.dim) { c.fillStyle = `rgba(0,0,0,${s.dim})`; c.fillRect(s.x, s.y, s.w, h); } },
+      if (s.mirrorLeft) { const m = s.mirrorLeft, sw = m * img.width / s.w; c.save(); c.translate(s.x, 0); c.scale(-1, 1); c.drawImage(img, 0, 0, sw, img.height, 0, s.y, m, h); c.restore(); }
+      if (s.mirrorRight) { const m = s.mirrorRight, sw = m * img.width / s.w; c.save(); c.translate(s.x + s.w, 0); c.scale(-1, 1); c.drawImage(img, img.width - sw, 0, sw, img.height, -m, s.y, m, h); c.restore(); }
+      if (s.dimSides) { c.fillStyle = `rgba(0,0,0,${s.dimSides})`; if (s.mirrorLeft) c.fillRect(s.x - s.mirrorLeft, s.y, s.mirrorLeft, h); if (s.mirrorRight) c.fillRect(s.x + s.w, s.y, s.mirrorRight, h); }
+      if (s.dim) { c.fillStyle = `rgba(0,0,0,${s.dim})`; c.fillRect(s.x, s.y, s.w, h); } },
     slab() {},
     crop(c, s) { const at = A(); const im = at && at.get(s.sprite); if (!im) return; c.drawImage(im, s.sx, s.sy, s.sw, s.sh, s.x, s.y, s.w, s.h); },
     prop(c, s) { SCENE.img(c, s); },
