@@ -232,7 +232,7 @@
   /* ---------- fases ---------- */
   function loadLevel(i, skipIntro) {
     S.idx = clamp(i, 0, LEVELS.length - 1); S.level = LEVELS[S.idx];
-    W = S.level.width || W0; G.W = W; if (canvas.width !== W) canvas.width = W; // fase com tabuleiro mais estreito mostra a foto 1:1
+    W = S.level.width || W0; G.W = W; if (canvas.width !== W) canvas.width = W; fitBoard(); // fase com tabuleiro mais estreito mostra a foto 1:1; o tabuleiro é escalado pra caber inteiro na tela
     S.placed = []; S.inv = Object.assign({}, S.level.inventory); S.sel = null; S.armed = null; S.laugh = null; S.mode = 'edit'; S.sim = null; S.particles = []; S.texts = []; hideWin();
     $('lvlTitle').textContent = `Fase ${S.idx + 1} · ${S.level.title}`;
     $('goalText').textContent = S.level.objective;
@@ -409,6 +409,9 @@
     $('loadOverlay').classList.remove('show');
     loadLevel(start);
   })();
+  /* tabuleiro sempre inteiro na tela: escala pelo que couber (largura ou altura) e centraliza */
+  function fitBoard() { const wrap = canvas.parentElement; if (!wrap) return; const cs = getComputedStyle(wrap); const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight); const availW = wrap.clientWidth - pad; const top = canvas.getBoundingClientRect().top; const availH = Math.max(240, window.innerHeight - top - 96); const s = Math.min(availW / W, availH / H); canvas.style.width = Math.round(W * s) + 'px'; canvas.style.height = Math.round(H * s) + 'px'; canvas.style.marginLeft = 'auto'; canvas.style.marginRight = 'auto'; }
+  window.addEventListener('resize', fitBoard);
   window.addEventListener('hashchange', () => { const m2 = /fase(\d+)/.exec(location.hash || ''); if (m2 && +m2[1] - 1 !== S.idx) { closeOverlays(); loadLevel(+m2[1] - 1); } });
   requestAnimationFrame(frame);
   if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { try { navigator.serviceWorker.register('sw.js').catch(() => { }); } catch (e) { } }

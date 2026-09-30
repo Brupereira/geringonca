@@ -189,6 +189,7 @@
         // um comeu e o outro ficou olhando: vai tomar o pote
         if (st.fedG && !st.fedC && t - st.fedG > 240 && !st.raid) { st.raid = true; c.say(c.gonca, 'Divide.', 50); c.gonca.facing = 1; c.setState(c.gonca, 'walk', { targetX: gB.x - 170 }); }
         if (st.fedC && !st.fedG && t - st.fedC > 240 && !st.raid) { st.raid = true; c.say(c.gerin, 'Peixe também serve.', 50); c.gerin.facing = -1; c.setState(c.gerin, 'walk', { targetX: cB.x + 170 }); }
+        if ((st.fedG || st.fedC) && !(st.fedG && st.fedC) && !st.raid) c.state.busyT = t; /* um comendo, outro olhando: ainda vai dar confusão */
         if (st.fedG && st.fedC && !st.done && t > Math.max(st.fedG, st.fedC) + 200) { st.done = true; c.win(); }
       },
       onReach(c, a) {
