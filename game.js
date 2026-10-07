@@ -4,7 +4,10 @@
   const G = GG, ART = GG_ART, LEVELS = GG_LEVELS.LEVELS, MSG = GG_LEVELS.MESSAGES;
   const PARTS = G.PARTS, H = G.H, FLOOR = G.FLOOR; let W = G.W; const W0 = G.W;
   const $ = id => document.getElementById(id);
-  const canvas = $('board'), ctx = canvas.getContext('2d'); canvas.width = W; canvas.height = H;
+  const TRAY_H = 170; /* estante de peças desenhada embaixo do cenário, no mesmo canvas */
+  const canvas = $('board'), ctx = canvas.getContext('2d'); canvas.width = W; canvas.height = H + TRAY_H;
+  const COARSE = !!(window.matchMedia && matchMedia('(pointer: coarse)').matches) || 'ontouchstart' in window;
+  const UI = px => px * W / Math.max(1, canvas.clientWidth || W); /* tamanho em pixels de tela convertido pra pixels do canvas: alvos de dedo iguais em qualquer zoom */
   const rad = d => d * Math.PI / 180;
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
   const pick = arr => arr[Math.floor(Math.random() * arr.length)];
@@ -158,15 +161,29 @@
     if (P.rot && !P.trigger) { const a = rad(e.angle || 0), L = P.w * (e.scale || 1) / 2 + 30; return [{ kind: P.stretch ? 'stretch' : 'rot', x: e.x + Math.cos(a) * L, y: e.y + Math.sin(a) * L, label: P.stretch ? 'gira e estica' : 'gira' }]; }
     return [];
   }
-  function handleAt(x, y) { if (!S.sel || !S.placed.includes(S.sel)) return null; for (const h of handlesOf(S.sel)) if (Math.hypot(x - h.x, y - h.y) <= 22) return h; return null; }
+  function handleAt(x, y) { if (!S.sel || !S.placed.includes(S.sel)) return null; const r = UI(COARSE ? 26 : 16); for (const h of handlesOf(S.sel)) if (Math.hypot(x - h.x, y - h.y) <= r) return h; return null; }
   function drawHandles(e) {
     ctx.save();
     for (const h of handlesOf(e)) {
       if (h.kind !== 'end' && h.kind !== 'bend') { ctx.setLineDash([4, 5]); ctx.strokeStyle = 'rgba(255,255,255,.7)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(h.x, h.y); ctx.stroke(); ctx.setLineDash([]); }
-      ctx.beginPath(); ctx.arc(h.x, h.y, 13, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 4; ctx.strokeStyle = '#e0563b'; ctx.stroke();
+      const r = UI(COARSE ? 14 : 11); ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = Math.max(3, r * 0.3); ctx.strokeStyle = '#e0563b'; ctx.stroke();
     }
     ctx.restore();
   }
+  /* botões que flutuam junto da peça selecionada: girar, inverter, devolver (alvos do tamanho de um dedo) */
+  function selButtons() {
+    const e = S.sel; if (!e || !S.placed.includes(e) || S.mode !== 'edit') return [];
+    const P = PARTS[e.type], r = UI(COARSE ? 22 : 17), gap = r * 2.35, list = [];
+    if (P.rot) list.push('rotL', 'rotR'); if (P.flip) list.push('flip'); list.push('del');
+    const half = Math.max(P.w * (e.scale || 1), P.h) / 2 + (e.type === 'hose' ? 30 : 0);
+    let cy = e.y - half - r - UI(12); if (cy - r < 6) cy = Math.min(H - r - 6, e.y + half + r + UI(12));
+    const x0 = e.x - (list.length - 1) * gap / 2;
+    return list.map((k, i) => ({ k, x: clamp(x0 + i * gap, r + 6, W - r - 6), y: cy, r }));
+  }
+  const SELGLYPH = { rotL: '↺', rotR: '↻', flip: '⇄', del: '🗑' };
+  function drawSelButtons() { for (const b of selButtons()) { ctx.save(); ctx.beginPath(); ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,249,238,.96)'; ctx.fill(); ctx.lineWidth = Math.max(2, b.r * 0.12); ctx.strokeStyle = '#e0563b'; ctx.stroke(); ART.text(ctx, SELGLYPH[b.k], b.x, b.y + b.r * 0.06, b.r * 1.15, '#2b2118'); ctx.restore(); } }
+  function selButtonAt(x, y) { for (const b of selButtons()) if (Math.hypot(x - b.x, y - b.y) <= b.r + UI(4)) return b.k; return null; }
+  function doSelButton(k) { if (k === 'rotL') rotateSel(-10); else if (k === 'rotR') rotateSel(10); else if (k === 'flip') flipSel(); else if (k === 'del' && S.sel) removePlaced(S.sel); }
   function onHandle(ev) {
     const hd = S.hdrag; if (!hd) return; const q = boardPos(ev), e = hd.ent, P = PARTS[e.type];
     if (hd.kind === 'rot' || hd.kind === 'stretch') { e.angle = Math.round(Math.atan2(q.y - e.y, q.x - e.x) * 180 / Math.PI); if (hd.kind === 'stretch') e.scale = clamp((Math.hypot(q.x - e.x, q.y - e.y) - 30) / (P.w / 2), 0.6, P.stretchMax || 1.9); }
@@ -209,10 +226,43 @@
       if (S.drag && S.drag.fromInv && S.drag.over) drawPart(S.drag.ent, false, 0.65);
       if (S.sel && S.placed.includes(S.sel)) drawHandles(S.sel);
       for (const e of S.placed) drawTrigger(e);
+      drawSelButtons();
     }
     else if (S.mode === 'play') for (const e of S.placed) if (e.type === 'tap') drawTrigger(e);
     drawFx();
+    drawTray();
   }
+  /* ---------- estante de peças dentro do canvas ---------- */
+  function trayCards() {
+    const types = S.trayOrder || []; const cw = 220, gap = 14, n = types.length, total = n * cw + (n - 1) * gap;
+    const x0 = Math.max(16, (W - 170 - total) / 2);
+    return types.map((type, i) => ({ type, x: x0 + i * (cw + gap), y: H + 16, w: cw, h: TRAY_H - 32 }));
+  }
+  const hintChip = () => ({ x: W - 146, y: H + 16, w: 130, h: TRAY_H - 32 });
+  function drawTray() {
+    ctx.save(); ctx.fillStyle = '#211c16'; ctx.fillRect(0, H, W, TRAY_H);
+    ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(0, H, W, 3);
+    const dim = S.mode !== 'edit';
+    for (const c of trayCards()) {
+      const n = S.inv[c.type] || 0, p = PARTS[c.type], armed = S.armed === c.type && !dim;
+      ctx.save(); ctx.globalAlpha = dim ? 0.35 : (n > 0 ? 1 : 0.38);
+      ctx.fillStyle = armed ? '#4a2f24' : '#332a21'; ART.rr(ctx, c.x, c.y, c.w, c.h, 16); ctx.fill();
+      ctx.lineWidth = armed ? 5 : 2; ctx.strokeStyle = armed ? '#ff6f50' : '#574838'; ctx.stroke();
+      ctx.save(); ctx.beginPath(); ART.rr(ctx, c.x + 6, c.y + 6, c.w - 12, c.h - 12, 12); ctx.clip();
+      ctx.translate(c.x + c.w / 2, c.y + 56); const sc = Math.min(150 / p.w, 84 / p.h, 1.5); ctx.scale(sc, sc);
+      ctx.shadowColor = 'rgba(255,255,255,.8)'; ctx.shadowBlur = 6; ART.PARTS[c.type](ctx, { type: c.type, data: {}, flip: false }, false, S.t); ctx.restore();
+      ART.text(ctx, p.name, c.x + c.w / 2, c.y + c.h - 18, 24, '#f3e9d7');
+      ctx.beginPath(); ctx.arc(c.x + c.w - 26, c.y + 26, 22, 0, Math.PI * 2); ctx.fillStyle = n > 0 ? '#e0563b' : '#6b5a48'; ctx.fill(); ART.text(ctx, '×' + n, c.x + c.w - 26, c.y + 27, 22, '#fff');
+      ctx.restore();
+    }
+    const hc = hintChip(); ctx.save(); ctx.globalAlpha = dim ? 0.35 : 1; ctx.fillStyle = '#332a21'; ART.rr(ctx, hc.x, hc.y, hc.w, hc.h, 16); ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#574838'; ctx.stroke();
+    ART.text(ctx, '?', hc.x + hc.w / 2, hc.y + 54, 60, '#f3e9d7'); ART.text(ctx, 'dica', hc.x + hc.w / 2, hc.y + hc.h - 18, 24, '#b7a891'); ctx.restore();
+    if (S.armed && !dim) ART.text(ctx, 'Toca no cenário pra colocar', W / 2, H + TRAY_H - 6, 20, '#b7a891');
+    ctx.restore();
+  }
+  function trayCardAt(x, y) { for (const c of trayCards()) if (x >= c.x && x <= c.x + c.w && y >= c.y && y <= c.y + c.h) return c; return null; }
+  function hintChipAt(x, y) { const h = hintChip(); return x >= h.x && x <= h.x + h.w && y >= h.y && y <= h.y + h.h; }
+  function showHint() { const hs = [].concat(S.level.hint || []); if (!hs.length) return; const n = Math.min(S.hintN || 0, hs.length - 1); S.hintN = n + 1; toast((n ? 'Última: ' : 'Tá bom: ') + hs[n], 7000); }
 
   /* ---------- loop ---------- */
   function frame(now) {
@@ -236,48 +286,35 @@
     S.placed = []; S.inv = Object.assign({}, S.level.inventory); S.sel = null; S.armed = null; S.laugh = null; S.mode = 'edit'; S.sim = null; S.particles = []; S.texts = []; hideWin();
     $('lvlTitle').textContent = `Fase ${S.idx + 1} · ${S.level.title}`;
     $('goalText').textContent = S.level.objective;
-    S.hintN = 0; $('hint').innerHTML = ''; const hb = document.createElement('button'); hb.textContent = 'Me dá uma dica'; hb.onclick = () => { const hs = [].concat(S.level.hint); const n = Math.min(S.hintN || 0, hs.length - 1); S.hintN = n + 1; $('hint').innerHTML = '<b>' + (n ? 'Última:' : 'Tá bom:') + '</b> ' + hs[n]; if (n + 1 < hs.length) { const more = document.createElement('button'); more.textContent = 'Outra'; more.onclick = hb.onclick; $('hint').appendChild(more); } }; $('hint').appendChild(hb);
-    buildInventory(); updateSel(); setPlayButton();
+    S.hintN = 0; S.trayOrder = Object.keys(S.level.inventory);
+    refreshCounts(); updateSel(); setPlayButton();
     try { history.replaceState(null, '', '#fase' + (S.idx + 1)); } catch (e) { }
     if (!skipIntro) { $('introTitle').textContent = `Fase ${S.idx + 1}: ${S.level.title}`; $('introText').textContent = S.level.intro; $('introGoal').textContent = S.level.objective; $('introOverlay').classList.add('show'); }
   }
-  function buildInventory() {
-    const inv = $('inv'); inv.innerHTML = '';
-    for (const type of Object.keys(S.level.inventory)) {
-      const p = PARTS[type], el = document.createElement('div'); el.className = 'item'; el.dataset.type = type;
-      const ic = document.createElement('canvas'); ic.width = 112; ic.height = 88; drawIcon(ic, type);
-      const txt = document.createElement('div'); txt.innerHTML = `<div class="name">${p.name}</div>`;
-      const cnt = document.createElement('div'); cnt.className = 'count';
-      el.append(ic, txt, cnt); inv.appendChild(el);
-      el.addEventListener('pointerdown', ev => { if (S.mode !== 'edit' || S.inv[type] <= 0) return; ev.preventDefault(); startDragFromInv(type, ev); });
-    }
-    refreshCounts();
-  }
-  function refreshCounts() { for (const el of $('inv').children) { const t = el.dataset.type; el.querySelector('.count').textContent = '×' + S.inv[t]; el.classList.toggle('empty', S.inv[t] <= 0); el.classList.toggle('armed', S.armed === t); } }
-  function drawIcon(c, type) { const cc = c.getContext('2d'), p = PARTS[type], sc = Math.min(96 / p.w, 72 / p.h, 1.5); cc.clearRect(0, 0, c.width, c.height); cc.save(); cc.translate(c.width / 2, c.height / 2); cc.scale(sc, sc); ART.PARTS[type](cc, { type, data: {}, flip: false }, false, 0); cc.restore(); }
+  function refreshCounts() { } /* a estante é desenhada a cada quadro a partir de S.inv */
 
   /* ---------- interação ---------- */
-  function boardPos(ev) { const r = canvas.getBoundingClientRect(); return { x: (ev.clientX - r.left) * W / r.width, y: (ev.clientY - r.top) * H / r.height, inside: ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom }; }
+  function boardPos(ev) { const r = canvas.getBoundingClientRect(); const x = (ev.clientX - r.left) * W / r.width, y = (ev.clientY - r.top) * canvas.height / r.height; return { x, y, inside: x >= 0 && x <= W && y >= 0 && y <= H, inTray: x >= 0 && x <= W && y > H && y <= canvas.height }; }
   function hitTest(x, y) {
     for (let i = S.placed.length - 1; i >= 0; i--) {
       const e = S.placed[i], p = PARTS[e.type];
-      if (e.type === 'hose') { const hp = WTR.hosePts(e); for (let k = 0; k <= 20; k++) { const u = k / 20, qx = (1 - u) * (1 - u) * hp.p0.x + 2 * (1 - u) * u * hp.c.x + u * u * hp.p1.x, qy = (1 - u) * (1 - u) * hp.p0.y + 2 * (1 - u) * u * hp.c.y + u * u * hp.p1.y; if (Math.hypot(x - qx, y - qy) <= 20) return e; } continue; }
+      if (e.type === 'hose') { const hp = WTR.hosePts(e); for (let k = 0; k <= 20; k++) { const u = k / 20, qx = (1 - u) * (1 - u) * hp.p0.x + 2 * (1 - u) * u * hp.c.x + u * u * hp.p1.x, qy = (1 - u) * (1 - u) * hp.p0.y + 2 * (1 - u) * u * hp.c.y + u * u * hp.p1.y; if (Math.hypot(x - qx, y - qy) <= UI(COARSE ? 22 : 16)) return e; } continue; }
       const a = -rad(e.angle || 0), dx = x - e.x, dy = y - e.y, lx = dx * Math.cos(a) - dy * Math.sin(a), ly = dx * Math.sin(a) + dy * Math.cos(a);
-      if (Math.abs(lx) <= p.w * (e.scale || 1) / 2 + 8 && Math.abs(ly) <= p.h / 2 + 8) return e;
+      const tol = UI(COARSE ? 14 : 8); if (Math.abs(lx) <= p.w * (e.scale || 1) / 2 + tol && Math.abs(ly) <= p.h / 2 + tol) return e;
     }
     return null;
   }
   const newEnt = (type, x, y) => type === 'bow' ? { type, x, y, angle: -35, flip: false, power: 16 } : type === 'hose' ? { type, x, y, angle: 0, flip: false, ex: x + 210, ey: y - 70, cx: x + 60, cy: y + 50 } : { type, x, y, angle: 0, flip: false };
-  function startDragFromInv(type, ev) { try { canvas.focus({ preventScroll: true }); } catch (_) {} const ent = newEnt(type, -999, -999); S.drag = { ent, fromInv: true, over: false, moved: false, sx: ev.clientX, sy: ev.clientY }; S.armed = null; refreshCounts(); window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp, { once: true }); }
+  function startDragFromInv(type, ev) { try { canvas.focus({ preventScroll: true }); } catch (_) {} const ent = newEnt(type, -999, -999); S.drag = { ent, fromInv: true, over: false, moved: false, sx: ev.clientX, sy: ev.clientY }; window.addEventListener('pointermove', onMove); window.addEventListener('pointerup', onUp, { once: true }); }
   function onMove(ev) {
-    if (!S.drag) return; const p = boardPos(ev), d = S.drag; if (Math.hypot(ev.clientX - d.sx, ev.clientY - d.sy) > 4) d.moved = true; d.over = p.inside;
+    if (!S.drag) return; const p = boardPos(ev), d = S.drag; if (Math.hypot(ev.clientX - d.sx, ev.clientY - d.sy) > (COARSE ? 8 : 4)) d.moved = true; d.over = p.inside; if (d.fromInv && !p.inside) return;
     const px0 = (S.level.play && S.level.play.x0) || 0, px1 = (S.level.play && S.level.play.x1) || W; const nx = clamp(p.x - (d.ox || 0), px0, px1), ny = clamp(p.y - (d.oy || 0), 0, d.ent.type === 'hydrant' ? FLOOR - 55 : FLOOR);
     const dx = nx - d.ent.x, dy = ny - d.ent.y; moveEnt(d.ent, dx, dy); for (const k of d.kids || []) moveEnt(k, dx, dy);
   }
   function onUp(ev) {
     window.removeEventListener('pointermove', onMove); const d = S.drag; S.drag = null; if (!d) return; const p = boardPos(ev);
     if (d.fromInv) {
-      if (!d.moved) { S.armed = S.armed === d.ent.type ? null : d.ent.type; refreshCounts(); toast(''); return; }
+      if (!d.moved || !p.inside) { if (!d.moved) S.armed = S.armed === d.ent.type ? null : d.ent.type; refreshCounts(); toast(''); updateSel(); return; }
       if (p.inside) { const px0 = (S.level.play && S.level.play.x0) || 0, px1 = (S.level.play && S.level.play.x1) || W; const nx = clamp(p.x, px0 + 10, px1 - 10), ny = clamp(p.y, 10, d.ent.type === 'hydrant' ? FLOOR - 55 : FLOOR - 5); moveEnt(d.ent, nx - d.ent.x, ny - d.ent.y); S.placed.push(d.ent); S.inv[d.ent.type]--; S.sel = d.ent; snap(d.ent, []); SFX.place(); refreshCounts(); }
     }
     else if (!p.inside) removePlaced(d.ent);
@@ -286,14 +323,18 @@
   }
   function removePlaced(e) { const i = S.placed.indexOf(e); if (i >= 0) { S.placed.splice(i, 1); S.inv[e.type]++; if (S.sel === e) S.sel = null; refreshCounts(); updateSel(); } }
   canvas.tabIndex = 0; canvas.style.outline = 'none';
+  canvas.addEventListener('pointercancel', ev => { if (S.drag) onUp(ev); if (S.hdrag) onHandleUp(); if (S.pull) onPullUp(); });
   canvas.addEventListener('pointerdown', ev => {
     try { canvas.focus({ preventScroll: true }); } catch (_) {}
+    try { canvas.setPointerCapture(ev.pointerId); } catch (_) {} /* o dedo pode sair do canvas sem perder o arrasto (Android cancelava) */
     const p = boardPos(ev);
+    if (p.inTray) { if (S.mode !== 'edit') return; ev.preventDefault(); ac(); if (hintChipAt(p.x, p.y)) { showHint(); return; } const c = trayCardAt(p.x, p.y); if (c && S.inv[c.type] > 0) startDragFromInv(c.type, ev); return; }
     if (S.mode === 'play') { // com a fase rodando, a única coisa clicável é a torneira: abrir a água na hora certa
       const tp = triggerAt(p.x, p.y); if (tp && tp.type === 'tap' && S.sim.openTap()) { ev.preventDefault(); floatText('ÁGUA!', p.x, p.y - 40, '#7fc8ff', 30); SFX.water(); }
       return;
     }
     if (S.mode !== 'edit') return; ev.preventDefault(); ac();
+    const sb = !S.armed && selButtonAt(p.x, p.y); if (sb) { doSelButton(sb); return; }
     const tg = !S.armed && triggerAt(p.x, p.y);
     if (tg) {
       S.sel = tg; updateSel();
@@ -323,11 +364,6 @@
   function rotateSel(d) { if (!S.sel || !PARTS[S.sel.type].rot) return; S.sel.angle = ((S.sel.angle || 0) + d + 540) % 360 - 180; updateSel(); }
   function flipSel() { if (!S.sel || !PARTS[S.sel.type].flip) return; const e = S.sel, kids = attached(e); e.flip = !e.flip; if (e.type === 'hydrant') for (const t of kids) if (t.type === 'tap') { const hs = attached(t); WTR.snapTap(t, e); for (const k of hs) { const sp = WTR.tapSpout(t); moveEnt(k, sp.x - k.x, sp.y - k.y); } } updateSel(); }
   function updateSel() {
-    const e = S.sel, info = $('selInfo'), can = !!e && S.mode === 'edit', p = e && PARTS[e.type];
-    $('btnRotL').disabled = !(can && p.rot); $('btnRotR').disabled = !(can && p.rot); $('btnFlip').disabled = !(can && p.flip); $('btnDel').disabled = !can;
-    if (S.mode !== 'edit') info.textContent = '';
-    else if (e) info.innerHTML = `<b>${p.name}</b>`;
-    else info.textContent = '';
     canvas.style.cursor = S.mode === 'edit' && S.armed ? 'crosshair' : 'default';
   }
   document.addEventListener('keydown', ev => {
@@ -338,7 +374,6 @@
     else if (k === 'escape') { S.armed = null; refreshCounts(); updateSel(); closeOverlays(); }
     else if (k === 'enter' && anyOverlay()) { const o = document.querySelector('.overlay.show .primary'); if (o) o.click(); }
   });
-  $('btnRotL').onclick = () => rotateSel(-5); $('btnRotR').onclick = () => rotateSel(5); $('btnFlip').onclick = flipSel; $('btnDel').onclick = () => S.sel && removePlaced(S.sel);
 
   /* ---------- testar ---------- */
   function startPlay() {
@@ -350,9 +385,9 @@
     // a água abre no começo (fase da torneira) ou no clique do jogador (demais fases); debugOpenAt só existe no gabarito
     const placed = S.placed.map(e => e.type === 'hose' ? Object.assign({}, e, { openAt: trg === 'tap' ? 0 : (e.debugOpenAt != null ? e.debugOpenAt : undefined) }) : e.type === 'lighter' ? Object.assign({}, e, { litAt: trg === 'light' ? 0 : undefined }) : e);
     S.sim = G.build(S.level, placed); S.mode = 'play'; S.t = 0; S.acc = 0; S.last = 0; S.eventsSeen = 0; S.particles = []; S.texts = []; S.armed = null; S.laugh = null;
-    refreshCounts(); updateSel(); setPlayButton(); document.querySelectorAll('.item').forEach(el => el.style.pointerEvents = 'none');
+    refreshCounts(); updateSel(); setPlayButton();
   }
-  function backToEdit() { hideWin(); S.mode = 'edit'; S.sim = null; S.laugh = null; S.particles = []; S.texts = []; updateSel(); setPlayButton(); document.querySelectorAll('.item').forEach(el => el.style.pointerEvents = ''); }
+  function backToEdit() { hideWin(); S.mode = 'edit'; S.sim = null; S.laugh = null; S.particles = []; S.texts = []; updateSel(); setPlayButton(); }
   function setPlayButton() { const b = $('btnPlay'); b.disabled = S.mode !== 'edit'; b.textContent = S.mode === 'edit' ? '▶ Testar' : '… rodando'; }
   $('btnPlay').onclick = startPlay; $('btnPlay').style.display = 'none'; // quem começa a fase é a peça-gatilho
   $('btnReset').onclick = () => { if (S.mode === 'edit') { S.placed = []; S.inv = Object.assign({}, S.level.inventory); S.sel = null; refreshCounts(); updateSel(); } };
@@ -400,7 +435,7 @@
   };
   $('btnCloseLevels').onclick = closeOverlays; $('btnHelp').onclick = () => $('helpOverlay').classList.add('show'); $('btnCloseHelp').onclick = closeOverlays;
   document.querySelectorAll('.overlay').forEach(o => o.addEventListener('click', ev => { if (ev.target === o && o.id !== 'introOverlay' && o.id !== 'failOverlay') closeOverlays(); }));
-  function toast(msg) { const m = $('msg'); if (!msg) { m.classList.remove('show'); return; } m.textContent = msg; m.classList.add('show'); clearTimeout(toast.tm); toast.tm = setTimeout(() => m.classList.remove('show'), 2600); }
+  function toast(msg, ms) { const m = $('msg'); if (!msg) { m.classList.remove('show'); return; } m.textContent = msg; m.classList.add('show'); clearTimeout(toast.tm); toast.tm = setTimeout(() => m.classList.remove('show'), ms || 2600); }
 
   /* ---------- início ---------- */
   let start = 0; const m = /fase(\d+)/.exec(location.hash || ''); if (m) start = clamp(+m[1] - 1, 0, LEVELS.length - 1); else { const first = S.progress.findIndex(v => !v); start = first < 0 ? 0 : first; }
@@ -410,8 +445,11 @@
     loadLevel(start);
   })();
   /* tabuleiro sempre inteiro na tela: escala pelo que couber (largura ou altura) e centraliza */
-  function fitBoard() { const wrap = canvas.parentElement; if (!wrap) return; const cs = getComputedStyle(wrap); const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight); const availW = wrap.clientWidth - pad; const top = canvas.getBoundingClientRect().top; const availH = Math.max(240, window.innerHeight - top - 96); const refW = Math.max(W, (S.level && S.level.fitWidth) || 0); const s = Math.min(availW / refW, availH / H); /* fase estreita: level.fitWidth diz quanto da largura ela ocupa (meio-termo entre encher a altura e ficar na altura das outras) */ canvas.style.width = Math.round(W * s) + 'px'; canvas.style.height = Math.round(H * s) + 'px'; canvas.style.marginLeft = 'auto'; canvas.style.marginRight = 'auto'; }
-  window.addEventListener('resize', fitBoard);
+  function fitBoard() { const wrap = canvas.parentElement; if (!wrap) return; const cs = getComputedStyle(wrap); const pad = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight); const availW = wrap.clientWidth - pad; const top = canvas.getBoundingClientRect().top; const availH = Math.max(200, window.innerHeight - top - 14); const refW = Math.max(W, (S.level && S.level.fitWidth) || 0); const s = Math.min(availW / refW, availH / canvas.height); /* fase estreita: level.fitWidth diz quanto da largura ela ocupa (meio-termo entre encher a altura e ficar na altura das outras) */ canvas.style.width = Math.round(W * s) + 'px'; canvas.style.height = Math.round(canvas.height * s) + 'px'; canvas.style.marginLeft = 'auto'; canvas.style.marginRight = 'auto'; }
+  window.addEventListener('resize', fitBoard); window.addEventListener('orientationchange', () => setTimeout(fitBoard, 300));
+  /* tela cheia: faz diferença no Android (a barra do navegador some); no iPhone não existe pra páginas, então o botão nem aparece */
+  (function () { const b = $('btnFull'); if (!b) return; const can = !!(document.fullscreenEnabled && document.documentElement.requestFullscreen) && COARSE; if (!can) { b.style.display = 'none'; return; } b.onclick = () => { if (document.fullscreenElement) { document.exitFullscreen().catch(() => { }); return; } document.documentElement.requestFullscreen().then(() => { try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => { }); } catch (_) { } }).catch(() => { }); }; document.addEventListener('fullscreenchange', () => setTimeout(fitBoard, 100)); })();
+  (function () { const o = $('rotateOverlay'), b = $('btnRotateSkip'); if (!o || !b) return; b.onclick = () => o.classList.add('skip'); })();
   window.addEventListener('hashchange', () => { const m2 = /fase(\d+)/.exec(location.hash || ''); if (m2 && +m2[1] - 1 !== S.idx) { closeOverlays(); loadLevel(+m2[1] - 1); } });
   requestAnimationFrame(frame);
   if ('serviceWorker' in navigator && /^https?:/.test(location.protocol) && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) { try { navigator.serviceWorker.register('sw.js').catch(() => { }); } catch (e) { } }
